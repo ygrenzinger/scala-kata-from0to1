@@ -6,9 +6,9 @@ import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 class InfiniteGridSuite extends FunSuite with ScalaCheckPropertyChecks with Matchers {
 
   test("should return 8 alive neighbours at any position in a full infinite grid") {
-    val grid = InfiniteGrid.create(3, alive)
+    val gameOfLife = GameOfLife.create(3, alive, infinite = true)
     forAll { (i: Int, j: Int) =>
-      grid.computeAliveNeighbours((i, j)) should be (8)
+      gameOfLife.computeAliveNeighbours((i, j)) should be (8)
     }
   }
 

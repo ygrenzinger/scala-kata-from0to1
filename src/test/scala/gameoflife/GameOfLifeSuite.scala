@@ -5,7 +5,7 @@ import org.scalatest.FunSuite
 class GameOfLifeSuite extends FunSuite {
 
   test("should create a game of life") {
-    val gameOfLife = GameOfLife.createGameOfLife(2).makeAlive((0,0))
+    val gameOfLife = GameOfLife.create(2).makeAlive((0,0))
     assert(gameOfLife.cellAt((0, 0)) == alive)
     assert(gameOfLife.cellAt((1, 1)) == dead)
   }

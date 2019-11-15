@@ -6,7 +6,7 @@ object FooBarQix {
 
   def convert(number: Int): String = {
     val divisiblePart = convertForDivisiblePart(number)
-    val digits = number.toString.map((c:Char) => c.asDigit)
+    val digits = number.toString.map(c => c.asDigit)
 
     if (!divisiblePart.isEmpty || digits.exists(conversions.contains)) {
       divisiblePart ++ convertForDigitPart(digits)

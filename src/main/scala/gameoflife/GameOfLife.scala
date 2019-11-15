@@ -1,19 +1,19 @@
 package gameoflife
 
-case class GameOfLife(grid: FiniteGrid) {
+import scala.collection.immutable.Seq
+
+case class GameOfLife(grid: Grid) {
+
   def nextGeneration(): GameOfLife = {
-    val indices = 0 to grid.size
-    val positions = for {
-      i <- indices
-      j <- indices
-    } yield (i, j)
-    val changeNextStateAtPosition = (g: FiniteGrid, pos: (Int, Int)) => {
-      val nextState = CellState.nextState(grid.cellAt(pos), grid.computeAliveNeighbours(pos))
-      g.changeCellAt(pos, nextState)
-    }
-    val nextGrid = positions.foldLeft(FiniteGrid.create(grid.size, dead))(changeNextStateAtPosition)
-    GameOfLife(nextGrid)
+    GameOfLife(grid.mapCells(
+      (cellState, position) => CellState.nextState(cellState, computeAliveNeighbours(position))))
   }
+
+  def computeAliveNeighbours(position: (Int, Int)): Int = (for {
+    i <- Seq(-1, 0, 1).map(i => i + position._1)
+    j <- Seq(-1, 0, 1).map(j => j + position._2)
+    if (i, j) != position
+  } yield (i, j)).count(cellAt(_) == alive)
 
   def makeAlive(position: (Int, Int)) =
     GameOfLife(grid.changeCellAt(position, alive))
@@ -24,11 +24,11 @@ case class GameOfLife(grid: FiniteGrid) {
 }
 
 object GameOfLife {
-  def createGameOfLife(size: Int, cellState: CellState = dead): GameOfLife =
-    GameOfLife(FiniteGrid.create(size, cellState))
+  def create(size: Int, cellState: CellState = dead, infinite: Boolean = false): GameOfLife =
+    GameOfLife(Grid.create(size, cellState, infinite))
 
-  def parse(schema: String): GameOfLife = {
+  def parse(schema: String, infinite: Boolean = false): GameOfLife = {
     val rows = schema.split("\n")
-    GameOfLife(FiniteGrid(rows.length, rows.map(Row.parse)))
+    GameOfLife(Grid(rows.length, rows.map(Row.parse), infinite))
   }
 }
