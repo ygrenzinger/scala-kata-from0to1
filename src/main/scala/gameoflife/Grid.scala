@@ -2,7 +2,7 @@ package gameoflife
 
 import scala.collection.immutable.Seq
 
-case class Grid(size: Int, rows: Seq[Row], infinite: Boolean = false) {
+case class Grid(size: Int, rows: Seq[Row], infinite: Boolean = false) extends World {
 
   def cellAt(position: (Int, Int)): CellState = {
     val internalPosition = normalizePosition(position)
@@ -12,7 +12,7 @@ case class Grid(size: Int, rows: Seq[Row], infinite: Boolean = false) {
       .getOrElse(dead)
   }
 
-  def changeCellAt(position: (Int, Int), state: CellState): Grid = {
+  def changeCellAt(position: (Int, Int), state: CellState): World = {
     val internalPosition = normalizePosition(position)
     Grid(size, rows.zipWithIndex
       .map {
@@ -21,7 +21,7 @@ case class Grid(size: Int, rows: Seq[Row], infinite: Boolean = false) {
       })
   }
 
-  def mapCells(f: (CellState, (Int, Int)) => CellState): Grid = {
+  def mapCells(f: (CellState, (Int, Int)) => CellState): World = {
     val nextRows = rows.zipWithIndex.map {
       case (row, i) => Row(row.cells.zipWithIndex.map {
         case (cellState, j) => f(cellState, (i, j))
@@ -44,6 +44,6 @@ case class Grid(size: Int, rows: Seq[Row], infinite: Boolean = false) {
 }
 
 object Grid {
-  def create(size: Int, cellState: CellState, infinite: Boolean = false): Grid =
+  def create(size: Int, cellState: CellState, infinite: Boolean = false): World =
     Grid(size, (1 to size).map(_ => Row.create(size, cellState)), infinite)
 }
