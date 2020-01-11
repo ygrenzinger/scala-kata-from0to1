@@ -4,33 +4,31 @@ import org.scalatest.FunSuite
 
 class KmeansSuite extends FunSuite {
 
-  private val identityFeatureTransformers: List[Double] => List[Double] = identity[List[Double]]
-
   test("create one cluster and associate it all points") {
     val kmeans = Kmeans(1)
-    val twoRowsWithOneColumn = List(List(0.0), List(10.0))
+    val twoPoints = Map(1L -> List(0.0), 2L -> List(10.0))
     val positionInitializer: Int => (Int, List[Double]) = _ => 1 -> List(5.0)
-    val result = kmeans.learnFrom(twoRowsWithOneColumn, identityFeatureTransformers, positionInitializer)
-    assert(result == List(List(List(0.0), List(10.0))))
+    val result = kmeans.learnFrom(twoPoints, positionInitializer)
+    assert(result == List(Map(1L -> List(0.0), 2L -> List(10.0))))
   }
 
   test("create two cluster and associate it their closest points") {
     val kmeans = Kmeans(2)
-    val twoRows = List(List(0.0), List(10.0))
+    val twoPoints = Map(1L -> List(0.0), 2L -> List(10.0))
     val positionInitializer: Int => (Int, List[Double]) = i => i -> Map(1 -> List(0.0), 2 -> List(10.0))(i)
-    val result = kmeans.learnFrom(twoRows, identityFeatureTransformers, positionInitializer)
-    assert(result == List(List(List(0.0)), List(List(10.0))))
+    val result = kmeans.learnFrom(twoPoints, positionInitializer)
+    assert(result == List(Map(1L -> List(0.0)), Map(2L -> List(10.0))))
   }
 
   test("create clusters by moving centers until stabilization") {
     val kmeans = Kmeans(2)
-    val twoRows = List(List(0.0), List(8.0), List(10.0))
+    val threePoints = Map(1L -> List(0.0), 2L -> List(8.0), 3L -> List(10.0))
     val positionInitializer: Int => (Int, List[Double]) = i => i -> Map(1 -> List(10.0), 2 -> List(11.0))(i)
-    val result = kmeans.learnFrom(twoRows, identityFeatureTransformers, positionInitializer)
+    val result = kmeans.learnFrom(threePoints, positionInitializer)
     assert(result == List(
-      List(List(0.0)),
-      List(List(8.0), List(10.0)))
-    )
+      Map(1L -> List(0.0)),
+      Map(2L -> List(8.0), 3L -> List(10.0))
+    ))
   }
 
   test("compute distance on one dimension") {

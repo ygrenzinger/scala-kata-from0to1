@@ -8,32 +8,38 @@ object Kmeans {
     Math.sqrt(sum)
   }
 
-  def centerOfCluster(points: List[Iterable[Double]]): List[Double] = points.transpose.map(l => l.sum / l.length)
+  def centerOfCluster(points: List[List[Double]]): List[Double] = points.transpose.map(l => l.sum / l.length)
 }
 
 case class Kmeans(numberOfCluster: Int) {
 
-  def learnFrom[RowType](rows: List[RowType],
-                         featuresTransformer: RowType => List[Double],
-                         positionInitializer: Int => (Int, List[Double])
-                        ): List[List[RowType]] = {
-    val clusterIds = Range(1, numberOfCluster + 1)
-    val indexedRows = rows.indices.zip(rows).toMap
-    val transformedRows: Map[Int, List[Double]] = indexedRows.view.mapValues(featuresTransformer.apply).toMap
+  type Point = List[Double]
 
-    val initialClusterPosition: Map[Int, List[Double]] = clusterIds.map(positionInitializer).toMap
-    stabilizeClusters(initialClusterPosition, transformedRows).map {
-      case (_, rowsId) => rowsId.map(id => indexedRows(id)).toList
+  def learnFrom[FeaturesRow](indexedRows: Map[Long, FeaturesRow],
+                clusterPositionInitializer: Int => (Int, Point)
+               ): List[Map[Long, FeaturesRow]] = {
+    ???
+  }
+
+  def learnFrom(indexedRows: Map[Long, Point],
+                clusterPositionInitializer: Int => (Int, Point)
+               ): List[Map[Long, Point]] = {
+    val clusterIds = Range(1, numberOfCluster + 1)
+    val initialClusterPosition: Map[Int, Point] = clusterIds.map(clusterPositionInitializer).toMap
+    val stabilizedClusters: Map[Int, Iterable[Long]] = stabilizeClusters(initialClusterPosition, indexedRows)
+    stabilizedClusters.map {
+      case (_, rowsId) => rowsId.map(id => id -> indexedRows(id)).toMap
     }.toList
   }
 
   @tailrec
-  private def stabilizeClusters(clusterPosition: Map[Int, List[Double]], rows: Map[Int, List[Double]]): Map[Int, Iterable[Int]] = {
-    val clusters: Map[Int, Iterable[Int]] = associateToCluster(rows, clusterPosition)
+  private def stabilizeClusters(clusterPosition: Map[Int, Point],
+                                indexedRows: Map[Long, Point]): Map[Int, Iterable[Long]] = {
+    val clusters: Map[Int, Iterable[Long]] = associateToCluster(indexedRows, clusterPosition)
 
-    def computeCenterPosition(clusterId: Int): List[Double] = {
+    def computeCenterPosition(clusterId: Int): Point = {
       clusters.get(clusterId)
-        .map((cluster: Iterable[Int]) => Kmeans.centerOfCluster(cluster.map(rowId => rows(rowId)).toList))
+        .map((cluster: Iterable[Long]) => Kmeans.centerOfCluster(cluster.map(rowId => indexedRows(rowId)).toList))
         .getOrElse(clusterPosition(clusterId))
     }
 
@@ -42,17 +48,17 @@ case class Kmeans(numberOfCluster: Int) {
     if (clusterPosition == newClusterPosition) {
       clusters
     } else {
-      stabilizeClusters(newClusterPosition, rows)
+      stabilizeClusters(newClusterPosition, indexedRows)
     }
   }
 
-  private def associateToCluster[RowType](transformedRows: Map[Int, List[Double]],
-                                          clustersWithPosition: Map[Int, List[Double]]): Map[Int, Iterable[Int]] = {
-    def findClosestCluster(features: List[Double]): Int = clustersWithPosition.map {
-      case (clusterId, centerPosition) => (clusterId, Kmeans.distance(centerPosition, features))
+  private def associateToCluster[RowType](indexedRows: Map[Long, Point],
+                                          clustersWithPosition: Map[Int, Point]): Map[Int, Iterable[Long]] = {
+    def findClosestCluster(point: Point): Int = clustersWithPosition.map {
+      case (clusterId, centerPosition) => (clusterId, Kmeans.distance(centerPosition, point))
     }.minBy { case (_, distance) => distance }._1
 
-    transformedRows.map {
+    indexedRows.map {
       case (rowId, features) => rowId -> findClosestCluster(features)
     }.groupMap(_._2)(_._1)
   }
