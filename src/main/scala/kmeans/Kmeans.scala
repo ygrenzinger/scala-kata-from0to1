@@ -15,12 +15,6 @@ case class Kmeans(numberOfCluster: Int) {
 
   type Point = List[Double]
 
-  def learnFrom[FeaturesRow](indexedRows: Map[Long, FeaturesRow],
-                clusterPositionInitializer: Int => (Int, Point)
-               ): List[Map[Long, FeaturesRow]] = {
-    ???
-  }
-
   def learnFrom(indexedRows: Map[Long, Point],
                 clusterPositionInitializer: Int => (Int, Point)
                ): List[Map[Long, Point]] = {
