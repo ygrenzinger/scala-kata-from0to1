@@ -10,7 +10,7 @@ class BuildTaskRunnerSuite extends FunSuite with Matchers with ScalaFutures with
 
   test("Should execute with success a task") {
     val taskA = BuildTaskRunner.createTask(name = "A", f = () => {})
-    whenReady(BuildTaskRunner.future(Seq(taskA))) { result: Seq[Try[String]] =>
+    whenReady(BuildTaskRunner.toFuture(Seq(taskA))) { result: Seq[Try[String]] =>
       result shouldBe Seq(Success("A"))
     }
   }
@@ -21,7 +21,7 @@ class BuildTaskRunnerSuite extends FunSuite with Matchers with ScalaFutures with
       throw exception
     })
 
-    whenReady(BuildTaskRunner.future(Seq(taskA))) { result: Seq[Try[String]] =>
+    whenReady(BuildTaskRunner.toFuture(Seq(taskA))) { result: Seq[Try[String]] =>
       result shouldBe Seq(Failure(exception))
     }
   }
@@ -30,7 +30,7 @@ class BuildTaskRunnerSuite extends FunSuite with Matchers with ScalaFutures with
     val runnedTasks = ListBuffer.empty[String]
     val taskA = BuildTaskRunner.createTask(name = "A", f = () => runnedTasks.addOne("A"))
 
-    whenReady(BuildTaskRunner.future(Seq(taskA, taskA))) { result: Seq[Try[String]] =>
+    whenReady(BuildTaskRunner.toFuture(Seq(taskA, taskA))) { result: Seq[Try[String]] =>
       result shouldBe Seq(Success("A"), Success("A"))
       runnedTasks should have size 1
       runnedTasks should contain("A")
@@ -40,18 +40,18 @@ class BuildTaskRunnerSuite extends FunSuite with Matchers with ScalaFutures with
   test("Should execute tasks after other tasks which they depends") {
     val runnedTasks = ListBuffer.empty[String]
     val tasks = createComplexGraph(runnedTasks)
-    whenReady(BuildTaskRunner.future(tasks)) { result: Seq[Try[String]] =>
+    whenReady(BuildTaskRunner.toFuture(tasks)) { result: Seq[Try[String]] =>
       result shouldBe Seq(Success("A"), Success("B"), Success("C"), Success("D"))
-      runnedTasks should contain inOrder("C","D", "A", "B")
+      runnedTasks should contain inOrder("C", "D", "A", "B")
     }
   }
 
   test("Should filter task to execute") {
     val runnedTasks = ListBuffer.empty[String]
     val tasks = createComplexGraph(runnedTasks)
-    whenReady(BuildTaskRunner.future(tasks, _.name == "D")) { result: Seq[Try[String]] =>
+    whenReady(BuildTaskRunner.toFuture(tasks, _.name == "D")) { result: Seq[Try[String]] =>
       result shouldBe Seq(Success("D"))
-      runnedTasks should contain inOrder("C","D")
+      runnedTasks should contain inOrder("C", "D")
     }
   }
 
@@ -76,30 +76,34 @@ class BuildTaskRunnerSuite extends FunSuite with Matchers with ScalaFutures with
   }
 }
 
-object BuildTaskRunner {
-  def createTask(name: String, f: () => Unit, depends: Seq[BuildTask] = Seq()): BuildTask = new BuildTask(name, f, depends)
 
-  def future(tasks: Seq[BuildTask], predicate: (BuildTask) => Boolean = _ => true): Future[Seq[Try[String]]] = Future.sequence(tasks.filter(predicate).map(_.future))
-
-  class BuildTask(val name: String, val f: () => Unit, val depends: Seq[BuildTask]) {
-    val future: Future[Try[String]] = buildTaskFuture
-
-    private def buildTaskFuture = {
-      def startCurrentTask = Future[Try[String]] {
-        Try.apply {
-          f()
-          name
-        }
-      }
-
-      if (depends.isEmpty) {
-        startCurrentTask
-      } else
-        Future
-          .sequence(depends.map(_.future))
-          .flatMap(_ => startCurrentTask)
+class BuildTask(val name: String, val f: () => Unit, val depends: Seq[BuildTask]) {
+  private lazy val currentTask = Future[Try[String]] {
+    Try.apply {
+      f()
+      name
     }
-
   }
+
+  lazy val future: Future[Try[String]] = {
+    if (depends.isEmpty) {
+      currentTask
+    } else {
+      Future
+        .sequence(depends.map(_.future))
+        .flatMap(_ => currentTask)
+    }
+  }
+
+}
+
+object BuildTaskRunner {
+  def createTask(name: String,
+                 f: () => Unit,
+                 depends: Seq[BuildTask] = Seq()): BuildTask =
+    new BuildTask(name, f, depends)
+
+  def toFuture(tasks: Seq[BuildTask], predicate: BuildTask => Boolean = _ => true): Future[Seq[Try[String]]] =
+    Future.sequence(tasks.filter(predicate).map(_.future))
 
 }
